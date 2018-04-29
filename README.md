@@ -7,7 +7,7 @@ LIght anf QUIck graPH and Timeline viewer
 
 ![Shell](img/shell.png)
 
-![Graph](img/Graph.png)<!-- .element height="50%" width="50%" --> ![Radial](img/Radial.png)<!-- .element height="50%" width="50%" -->
+![Graph](img/Radial-Graph.png)
 
 ![Time](img/Time.png)
 

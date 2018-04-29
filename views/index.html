@@ -1,0 +1,24 @@
+<html>
+<head>
+<title>{{.title}}</title>
+<style>
+body {
+  font: 400 16px 'Open Sans', sans-serif;
+  }
+</style>
+</head>
+<body>
+<h1>{{.title}}</h1>
+<ul>
+ {{range $q := .Questions}}
+ <li>{{$q.Title}}</li>
+  <ul>
+  {{range $d := .Dates}}
+  <li> {{$d}} <a href=/g/{{$q.Title}}/{{$d}}>graph</a> <a href=/r/{{$q.Title}}/{{$d}}>radial</a> <a href=/t/{{$q.Title}}/{{$d}}>time</a> </li>
+  {{end}}
+  </ul>
+ {{end}}
+
+</ul>
+</body>
+</html>

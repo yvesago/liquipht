@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Radial nodes and links</title>
+<style>
+.node {
+  font: 400 11px 'Open Sans', sans-serif;
+  fill: #8C8C8C;
+}
+
+.title {
+  font: 400 20px 'Open Sans', sans-serif;
+  float:left;
+  fill: #222;
+  font-weight: 700;
+}
+
+.node:hover {
+  fill: #000;
+}
+
+.link {
+  stroke: steelblue;
+  stroke-opacity: 0.4;
+  fill: none;
+  pointer-events: none;
+}
+
+.node:hover,
+.node--source,
+.node--target {
+  font-weight: 700;
+}
+
+.node--source {
+  fill: #888 !important;
+}
+
+.node--target {
+  fill: steelblue !important;
+}
+
+.link--source,
+.link--target {
+  stroke-opacity: 1;
+  stroke-width: 4px;
+}
+
+.legend {
+  font: 400 12px 'Open Sans', sans-serif;
+  float:left;
+  margin-right: 1em;
+  padding-top: 2em;
+}
+
+.key-dot {
+  display: inline-block;
+  height: 10px;
+  margin-right: .5em;
+  width: 10px;
+}
+
+.source { background: #bbb;}
+.target { background: steelblue;}
+
+div.tooltip {   
+  position: absolute;         
+  text-align: center;         
+  width: 200px;                    
+  height: 28px;                   
+  padding: 2px;               
+  font: 12px sans-serif;      
+  background: lightsteelblue; 
+  border: 0px;        
+  border-radius: 8px;         
+  pointer-events: none;           
+}
+
+</style>
+<body>
+<script src="/js/d3.v4.min.js"></script>
+<script src="/js/saveSvgAsPng.js"></script>
+<div class="legend"> 
+Liens :<br/>
+   <span class="key-dot source"></span>Source 
+   <span class="key-dot target"></span>Mention
+<br />
+{{.legend}}
+<br />
+<br />
+[
+<a href="/">..</a> |
+<a href="/g/{{.search}}/{{.time}}">graph</a> |
+<a href="/t/{{.search}}/{{.time}}">time</a>
+]
+<br />
+<button accesskey="d" id="download"><u>d</u>ownload</button>
+</div>
+<script>
+/*
+http://jsdatav.is/chap07.html
+https://stackoverflow.com/questions/28493536/d3-js-hierarchical-edge-bundling-data-format
+
+https://bl.ocks.org/mbostock/7607999
+*/
+
+var search = "{{.search}}";
+var time = "{{.time}}";
+
+var file = time + "-" + search;
+
+var img = "{{.title}}-" + file + "-radial.png";
+
+var diameter = 960,
+    radius = diameter / 2,
+    innerRadius = radius - 180;
+
+var cluster = d3.cluster()
+    .size([360, innerRadius]);
+
+var line = d3.radialLine()
+    .curve(d3.curveBundle.beta(0.85))
+    .radius(function(d) { return d.y; })
+    .angle(function(d) { return d.x / 180 * Math.PI; });
+
+var svg = d3.select("body").append("svg")
+    .attr("width", diameter)
+    .attr("height", diameter)
+    .append("g")
+      .attr("transform", "translate(" + radius + "," + radius + ")");
+
+var link = svg.append("g").selectAll(".link"),
+    node = svg.append("g").selectAll(".node");
+
+
+var defs = svg.append("defs");
+
+
+// Define the div for the tooltip
+var div = d3.select("body").append("div")   
+    .attr("class", "tooltip")               
+    .style("opacity", 0);
+
+d3.json("/data/{{.nodes}}", function(error, users) {
+ d3.json("/data/links-" + file + ".json", function(error, classes) {
+
+ svg.append("text")
+      .attr("class", "title")
+      .attr("x",   file.length - (diameter / 2))             
+      .attr("y", 20 - (diameter / 2))
+      .attr("text-anchor", "left")  
+      .style("font-size", "20px") 
+      .text(classes.length + " {{.title}} " + search + " à " + time);
+
+
+ var c = packageHierarchy(classes, users);
+
+ var nodes = d3.hierarchy(c)
+      .sum(function(d) { d.used= 0; return d.size; });
+
+ cluster(nodes);
+ var nsize = nodes.children.length;
+
+ var links = packageImports(classes, nodes.leaves());
+
+ link = link
+    .data(links)
+    .enter().append("path")
+      .each(function(d) {
+         var s = d[0]; var t = d[d.length - 1]; 
+         s.data.used++; t.data.used++;  
+         d.source = s; d.target = t; 
+         })
+      .attr("class", "link")
+      .style("stroke",function(d){
+        var id = "S"+d.source.data.key +"T" + d.target.data.key;
+        var gradient1 = defs.append("linearGradient").attr("id",  id)
+                       .attr("spreadMethod", "pad");
+        var x = d.source.x;
+        var y = d.target.x - x;
+        var t = 180 - x;
+        if ( y < t && t > 0  && y < 0 ) { 
+          gradient1.append("stop").attr("offset", "0%").attr("stop-color", "steelblue");
+          gradient1.append("stop").attr("offset", "100%").attr("stop-color", "#ddd");
+        } else {
+          gradient1.append("stop").attr("offset", "0%").attr("stop-color", "#ddd");
+          gradient1.append("stop").attr("offset", "100%").attr("stop-color", "steelblue");
+        }
+        return "url(#" + id + ")";})
+      .attr("d", line);
+
+
+ node = node
+    .data(nodes.leaves())
+    .enter().append("text")
+      .attr("class", "node")
+      .style("fill", function(d) { if ( d.data.color !== "" ) return d.data.color; } )
+      .attr("dy", "0.31em")
+      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + (d.y + 8) + ",0)" + (d.x < 180 ? "" : "rotate(180)"); })
+      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+      .style("font-size", function(d) { 
+           var j = d.data.size; 
+           switch (true) { 
+               case (j<10): 
+                return "8px"; break; 
+               case (j<500): 
+                return "10px"; break; 
+               case (j<3000): 
+                return "12px"; break; 
+               case (j<10000): 
+                return "15px"; break;
+               case (j<20000): 
+                return "18px"; break;
+               default: return "22px";} }) 
+      .text(function(d) { 
+          if (d.data.used >= {{.minview}}) {
+              return d.data.name; 
+              } else { return "⚫"; };
+       }
+      )
+      .on("mouseover", mouseovered)
+      .on("mouseout", mouseouted);
+
+ //console.log(node);
+
+ });
+});
+
+function mouseovered(d) {
+  node
+      .each(function(n) { n.target = n.source = false; });
+
+  link
+      .classed("link--target", function(l) { if (l.target === d) return l.source.source = true; })
+      .classed("link--source", function(l) { if (l.source === d) return l.target.target = true; })
+    .filter(function(l) { return l.target === d || l.source === d; })
+      .each(function() { this.parentNode.appendChild(this); });
+
+  node
+      .classed("node--target", function(n) { return n.target; })
+      .classed("node--source", function(n) { return n.source; });
+
+  div.transition()     
+      .duration(200)      
+      .style("opacity", .8);      
+  div .html(d.data.name + "<br />" + d.data.size )  
+     .style("left", (d3.event.pageX) + "px")     
+     .style("top", (d3.event.pageY - 28) + "px");    
+}
+
+function mouseouted(d) {
+  link
+      .classed("link--target", false)
+      .classed("link--source", false);
+
+  node
+      .classed("node--target", false)
+      .classed("node--source", false);
+
+  div.transition()        
+     .duration(500)      
+     .style("opacity", 0);   
+}
+
+d3.select(self.frameElement).style("height", diameter + "px");
+
+// Lazily construct the package hierarchy from class names.
+function packageHierarchy(classes, users) {
+  var map = {}, umap = {};
+  var i = 0;
+
+  function find(name, data) {
+    var node = map[name];
+    if (!node) {
+      if (! map[name]) {
+          i++;
+          if (umap[name] === undefined ) {
+            umap[name] = {name: link.source, color: '#ccc', size: 0};
+          };
+          node = {name: name, children: [], key: i, color: umap[name].color, size: umap[name].size};
+          map[name] = node;
+      }
+    }
+    return node;
+  }
+
+  users.forEach(function(d) {
+    umap[d.name] = d;
+  });
+
+  classes.forEach(function(d) {
+    find(d.source, d);
+    find(d.target, d);
+  });
+
+  var nodes = {name: "", children: [], key: 0};
+  for (var k in map ){
+      if (map.hasOwnProperty(k)) {
+        nodes.children.push(map[k]);
+      }
+  };
+
+  return nodes;
+}
+
+// Return a list of imports for the given array of nodes.
+function packageImports(classes, nodes) {
+  var map = {},
+      imports = [];
+
+  // Compute a map from name to node.
+  nodes.forEach(function(d) {
+     map[d.data.name] = d;
+  });
+
+  // For each import, construct a link from the source to target node.
+  classes.forEach(function(d) {
+      imports.push(map[d.source].path(map[d.target]));
+   });
+
+  return imports;
+}
+
+d3.select("#download")
+ .on('click', function(){
+    // Get the d3js SVG element and save using saveSvgAsPng.js
+    saveSvgAsPng(document.getElementsByTagName("svg")[0], img, {scale: 2, backgroundColor: "#FFFFFF"});
+});
+
+</script>
+</body>
+</html>

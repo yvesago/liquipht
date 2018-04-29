@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<title>Time scaterplot</title>
+<style>
+.title {
+  font: 400 20px 'Open Sans', sans-serif;
+  float:left;
+  fill: #222;
+  font-weight: 700;
+}
+
+div.tooltip { 
+  position: absolute;
+  text-align: center;
+  width: 120px;
+  height: 28px;
+  padding: 2px;
+  font: 12px sans-serif;
+  background: lightsteelblue;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+circle {
+  fill: #ccc;
+  stroke: #fff;
+  stroke-width: 1px;
+}
+
+.legend {
+  font: 300 12px 'Open Sans', sans-serif;
+/*    float:left;*/
+  margin-right: 1em;
+  padding-top: 2em;
+}
+
+.key-dot {
+  display: inline-block;
+  height: 10px;
+  margin-right: .5em;
+  width: 10px;
+}
+</style>
+<script src="/js/d3.v4.min.js"></script>
+<script src="/js/saveSvgAsPng.js"></script>
+<body>
+<svg width="1360" height="240"></svg>
+<div class="legend">
+{{.legend}}
+<br />
+<br />
+[ 
+<a href="/">..</a> |
+<a href="/g/{{.search}}/{{.time}}">graph</a> |
+<a href="/r/{{.search}}/{{.time}}">radial</a> 
+]
+<br />
+<button accesskey="d" id="download"><u>d</u>ownload</button>
+</div>
+
+<script>
+var search = "{{.search}}";
+var time = "{{.time}}";
+
+var file = time + "-" + search;
+
+var img = "{{.title}}-" + file + "-time.png";
+
+var svg = d3.select("svg"),
+    margin = {top: 40, right: 80, bottom: 30, left: 50},
+    width = svg.attr("width") - margin.left - margin.right,
+    height = svg.attr("height") - margin.top - margin.bottom,
+    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var parseTime = d3.timeParse("%Y-%m-%d-%Hh%M");
+
+var x = d3.scaleTime().range([0, width]),
+    y = d3.scaleLinear().range([height, 20]),
+    z = d3.scaleOrdinal(d3.schemeCategory10);
+
+var div = d3.select("body").append("div")   
+    .attr("class", "tooltip")               
+    .style("opacity", 0);
+
+d3.json("/data/{{.nodes}}", function(error, users) {
+ d3.json("/data/links-" + file + ".json", function(error, links) {
+
+ svg.append("text")
+      .attr("class", "title")
+      .attr("x", search.length)             
+      .attr("y", 20)
+      .attr("text-anchor", "left")  
+      .style("font-size", "20px") 
+      .text(links.length + " Sources {{.title}} " + search + " à " + time);
+
+ var map = {}
+ var mapsource = {};
+ var sources = [];
+ links.forEach(function(link) {
+  var us = users.find(u => u.name === link.source);
+  if (us === undefined) 
+      us = {name: link.source, color: '#ccc', size: 0};
+  if (! map[us.name]) {
+    map[us.name] = us;
+  }
+  var id = us.color.toUpperCase();
+  if (id === "") { id = "#CCC"; }; 
+  if (! mapsource[id] ) {
+   var s = { id: id, values: [] }
+   mapsource[id] = s;
+   sources.push(s);
+  };
+ });
+
+ var data = [];
+ links.forEach(function(link) {
+  var id = map[link.source].color.toUpperCase();
+  if (id === "") { id = "#CCC"; }; 
+
+  var t = parseTime(link.created_at); 
+  data.push({date: t, name: map[link.source].name, size: map[link.source].size});
+
+  sources.forEach(function(d) {
+   var count = false;
+   if (d.id === id ) {
+     count = true;
+   }
+   var value = {date: t, count: count, name: map[link.source].name, size: map[link.source].size};
+   d.values.push(value)
+  });
+ });
+ data.push({date: parseTime(time)}); // add file time
+
+
+ x.domain(d3.extent(data, function(d) { return d.date; }));
+
+ y.domain([
+    d3.min(sources, function(c) { return d3.min(c.values, function(d) { return d.count; }); }),
+    d3.max(sources, function(c) { return d3.max(c.values, function(d) { return d.count; }); })
+ ]);
+
+ z.domain(sources.map(function(c) { return c.id; }));
+
+ g.append("g")
+    .attr("class", "axis axis--x")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x));
+
+ var action = g.selectAll(".action")
+    .data(sources)
+    .enter().append("g")
+      .attr("class", "action");
+
+ // Add the scatterplot
+ var i = 0;
+ var l = sources.length ;
+ sources.sort().forEach(function(s) {
+  i++;
+  action.selectAll("dot")
+      .data(s.values)
+    .enter().append("circle")
+      .on("mouseover", mouseovered)
+      .on("mouseout", mouseouted)
+      .style("fill", function(d) { if (d.count === true) return s.id; return "white";})
+      .attr("r", 5)
+      .attr("cx", function(d) { if (d.count === true) return x(d.date); })
+      .attr("cy", function(d) { if (d.count === true) return y(i/l); });
+ });
+
+ });
+});
+
+d3.select("#download")
+  .on('click', function(){
+    // Get the d3js SVG element and save using saveSvgAsPng.js
+        saveSvgAsPng(document.getElementsByTagName("svg")[0], img, {scale: 2, backgroundColor: "#FFFFFF"});
+  });
+
+
+function mouseovered(d) {
+   div.transition()     
+      .duration(200)      
+      .style("opacity", .8);      
+   div .html(d.name + "<br />" + d.size )  
+      .style("left", (d3.event.pageX) + "px")     
+      .style("top", (d3.event.pageY - 28) + "px"); 
+}
+
+function mouseouted(d) {
+  div.transition()        
+     .duration(500)      
+     .style("opacity", 0);
+}
+
+
+</script>
+</body>
+</html>

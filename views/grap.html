@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<title>Graph nodes and links</title>
+<style>
+.link {
+  stroke: #999;
+}
+
+#end-arrow {
+  fill: #999;
+}
+
+circle {
+  fill: #ccc;
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+div.tooltip {
+  position: absolute;
+  text-align: center;
+  width: 120px;
+  height: 28px;
+  padding: 2px;
+  font: 12px sans-serif;
+  background: lightsteelblue;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.title {
+  font: 400 20px 'Open Sans', sans-serif;
+  float:left;
+  fill: #222;
+  font-weight: 700;
+}
+
+.legend {
+  font: 300 12px 'Open Sans', sans-serif;
+  float:left;
+  margin-right: 1em;
+  padding-top: 2em;
+}
+
+.key-dot {
+  display: inline-block;
+  height: 10px;
+  margin-right: .5em;
+  width: 10px;
+}
+</style>
+<script src="/js/d3.v4.min.js"></script>
+<script src="/js/saveSvgAsPng.js"></script>
+<body>
+<svg width="900" height="800"></svg>
+<div class="legend">
+{{.legend}}
+<br />
+<br />
+<label>
+Link Strength:
+<br /><input style="width:140px;" type="range" min="0" max="1" step="any" value="0.5"></label>
+<br />
+[ 
+<a href="/">..</a> |
+<a href="/r/{{.search}}/{{.time}}">radial</a> |
+<a href="/t/{{.search}}/{{.time}}">time</a>
+]
+<br />
+<button  accesskey="d" id="download"><u>d</u>ownload</button>
+</div>
+<script>
+
+var search = "{{.search}}";
+var time = "{{.time}}";
+
+var file = time + "-" + search;
+
+var img = "{{.title}}-" + file + "-graph.png";
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+var div = d3.select("body").append("div")   
+    .attr("class", "tooltip")               
+    .style("opacity", 0);
+
+var charge_force = d3.forceManyBody()
+    .strength(-700).distanceMin(5).distanceMax(70); 
+var center_force = d3.forceCenter(width / 2, height / 2);  
+var forceY = d3.forceY().strength(0.03).y(height / 2);
+var forceX = d3.forceX().strength(0.03).x(width / 2);
+
+var simulation = d3.forceSimulation()
+    .force("charge", charge_force)
+    .force("center", center_force)
+    .force("forceY", forceY)
+    .force("forceX", forceX)
+    ;
+
+// get the data
+d3.json("/data/{{.nodes}}", function(error, users) {
+ d3.json("/data/links-" + file + ".json", function(error, links) {
+
+ svg.append("text")
+      .attr("class", "title")
+      .attr("x",  search.length)
+      .attr("y", 20 )
+      .attr("text-anchor", "left")  
+      .style("font-size", "20px") 
+      .text(links.length + " {{.title}} " + search + " à " + time);
+
+ const R = 35;
+ svg.append('svg:defs').selectAll('marker')
+    .data([{ id: 'end-arrow', opacity: 1 }, { id: 'end-arrow-fade', opacity: 0.1 }])
+    .enter().append('marker')
+      .attr('id', d => d.id)
+      .attr('viewBox', '0 0 10 10')
+      .attr('refX', 5 + R)
+      .attr('refY', 5)
+      .attr('markerWidth', 4)
+      .attr('markerHeight', 4)
+      .attr('orient', 'auto')
+      .append('svg:path')
+        .attr('d', 'M0,0 L0,10 L10,5 z')
+        .style('opacity', d => d.opacity);
+
+
+ var nodes = [];
+
+ var v = d3.scaleLinear()
+  .domain([0, d3.max(users, function(d) { return d.size; })])
+  .range([0, 100]);
+
+ var map = {}
+ links.forEach(function(link) {
+    var us = users.find(u => u.name === link.source);
+    if (us === undefined) 
+     us = {name: link.source, color: '#ccc', size: 0};
+    if (! map[us.name]) {
+     map[us.name] = true;
+     nodes.push(us);
+    }
+    us = users.find(u => u.name === link.target);
+    if (us === undefined) 
+     us = {name: link.target, color: '#ccc', size: 0};
+    if (! map[us.name]) {
+     map[us.name] = true;
+     nodes.push(us);
+    }
+ });
+
+
+ var link_force =  d3.forceLink(links)
+                    .distance(10).iterations(2).id(function(d) { return d.name; });            
+                     
+ simulation
+    .nodes(nodes)
+    .force("links",link_force);
+
+ simulation
+      .on("tick", ticked);
+
+
+ var g = svg.append("g")
+    .attr("class", "everything");
+
+ var link = g.append("g")
+    .attr("class", "link")
+    .selectAll("line")
+    .data(links)
+    .enter().append("line")
+      .attr('marker-end', 'url(#end-arrow)')
+      .attr("stroke-width", 1 );
+
+//console.log(link);
+
+ var node = g
+    .selectAll(".node")
+    .data(nodes)
+      .attr("class", "node")
+    .enter()
+     .append("circle")
+    .style("fill", function(d) { if ( d.color !== "" ) return d.color; } )
+    .attr("r", function(d) {
+           var j = d.size; 
+           switch (true) { 
+               case (j<10): 
+                return 2; break; 
+               case (j<500): 
+                return 4; break; 
+               case (j<3000): 
+                return 6; break; 
+               case (j<10000): 
+                return 8; break;
+               case (j<20000): 
+                return 10; break;
+               default: return 12;} 
+    })
+ //    .on("click", click)
+ //    .on("dblclick", dblclick)
+    .on("mouseover", mouseovered)
+    .on("mouseout", mouseouted)
+    .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+
+ //add zoom capabilities 
+ var zoom_handler = d3.zoom()
+    .on("zoom", zoom_actions);
+
+ zoom_handler(svg);
+
+ function ticked() {
+    node
+        .attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+
+    link
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+ };
+
+ //Zoom functions 
+ function zoom_actions(){
+    g.attr("transform", d3.event.transform)
+ }
+
+
+ function mouseovered(d) {
+   div.transition()     
+      .duration(200)      
+      .style("opacity", .8);      
+   div .html(d.name + "<br />" + d.size )  
+      .style("left", (d3.event.pageX) + "px")     
+      .style("top", (d3.event.pageY - 28) + "px"); 
+ }
+
+ function mouseouted(d) {
+  div.transition()        
+     .duration(500)      
+     .style("opacity", 0);
+ }
+
+ // action to take on mouse click
+ /*
+ function click(d) {
+   div.transition()     
+      .duration(200)      
+      .style("opacity", .8);      
+   //div .html(d.x.toFixed(2) + "<br/>" + d.data.name + " - " + d.data.size )  
+   div .html(d.name + "<br />" + d.size )  
+      .style("left", (d3.event.pageX) + "px")     
+      .style("top", (d3.event.pageY - 28) + "px");    
+
+ }
+
+ // action to take on mouse double click
+ function dblclick() {
+   div.transition()        
+     .duration(500)      
+     .style("opacity", 0);
+ }
+ */
+
+ function dragstarted(d) {
+   if (!d3.event.active) simulation.alphaTarget(0.9).restart();
+   d.fx = d.x;
+   d.fy = d.y;
+ }
+
+ function dragged(d) {
+   d.fx = d3.event.x;
+   d.fy = d3.event.y;
+ }
+
+ function dragended(d) {
+   if (!d3.event.active) simulation.alphaTarget(0);
+   d.fx = null;
+   d.fy = null;
+ }
+
+
+ });
+});
+
+d3.select("#download")
+  .on('click', function(){
+    // Get the d3js SVG element and save using saveSvgAsPng.js
+        saveSvgAsPng(document.getElementsByTagName("svg")[0], img, {scale: 2, backgroundColor: "#FFFFFF"});
+  });
+
+function inputted() {
+  simulation.force("links").strength(+this.value);
+  simulation.force("forceX").strength(+this.value/10).x(width / 2);
+  simulation.force("forceY").strength(+this.value/10).y(height / 2);
+  simulation.alpha(1).restart();
+}
+
+d3.select("input[type=range]")
+    .on("input", inputted);
+
+</script>
+</body>
+</html>

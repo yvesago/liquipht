@@ -87,6 +87,10 @@ Liens :<br/>
 {{.legend}}
 <br />
 <br />
+Time:
+<br /><input class="time" style="width:140px;" type="range" min="0" max="1" step="any" value="1"></label>
+<br /><span class="cdate"></span>
+<br />
 [
 <a href="/">..</a> |
 <a href="/g/{{.search}}/{{.time}}">graph</a> |
@@ -109,6 +113,8 @@ var time = "{{.time}}";
 var file = time + "-" + search;
 
 var img = "{{.title}}-" + file + "-radial.png";
+
+var parseTime = d3.timeParse("%Y-%m-%d-%Hh%M");
 
 var diameter = 960,
     radius = diameter / 2,
@@ -139,6 +145,9 @@ var defs = svg.append("defs");
 var div = d3.select("body").append("div")   
     .attr("class", "tooltip")               
     .style("opacity", 0);
+
+var timeScale;
+var numberOfHours = 0;
 
 d3.json("/data/{{.nodes}}", function(error, users) {
  d3.json("/data/links-" + file + ".json", function(error, classes) {
@@ -221,6 +230,13 @@ d3.json("/data/{{.nodes}}", function(error, users) {
       .on("mouseout", mouseouted);
 
  //console.log(node);
+
+ var end = parseTime(classes[0].created_at);
+ var start = parseTime(classes[classes.length - 1].created_at);
+ numberOfHours = d3.timeHour.count(start, end);
+ timeScale = d3.scaleTime()
+   .domain([start, end])
+    .range([0, numberOfHours]);
 
  });
 });
@@ -314,7 +330,10 @@ function packageImports(classes, nodes) {
 
   // For each import, construct a link from the source to target node.
   classes.forEach(function(d) {
-      imports.push(map[d.source].path(map[d.target]));
+      var o = map[d.source];
+      o = o.path(map[d.target]);
+      o.created_at = d.created_at;
+      imports.push(o);
    });
 
   return imports;
@@ -325,6 +344,26 @@ d3.select("#download")
     // Get the d3js SVG element and save using saveSvgAsPng.js
     saveSvgAsPng(document.getElementsByTagName("svg")[0], img, {scale: 2, backgroundColor: "#FFFFFF"});
 });
+
+function timescaled() {
+  if (numberOfHours === 0) {
+   d3.select('input.time').style("opacity",0)
+   return;
+  }
+  var date = timeScale.invert(Math.floor(numberOfHours * this.value));
+  d3.select('span.cdate').text(d3.timeFormat("%a %d %m %Hh%M")(date));
+  svg.selectAll(".link")
+      .style("opacity",function(d){
+        if (parseTime(d.created_at) < date ) {
+            return 1;
+        } else {
+            return 0;
+        }
+      })
+};
+
+d3.select("input[class=time]")
+    .on("input", timescaled);
 
 </script>
 </body>

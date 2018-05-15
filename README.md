@@ -5,7 +5,10 @@ LIght anf QUIck graPH and Timeline viewer
 
 ``liquipht`` is a local web server which allow to watch links data in your browser.
 
-![Shell](img/shell.png)
+| --- | --- |
+| ![Radial](img/radial.gif) | ![Time](img/time.gif) |
+| ![Shell](img/shell.png) |  |
+| --- | --- |
 
 ![Graph](img/Radial-Graph.png)
 

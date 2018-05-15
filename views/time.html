@@ -74,7 +74,17 @@ var svg = d3.select("svg"),
     height = svg.attr("height") - margin.top - margin.bottom,
     g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var parseTime = d3.timeParse("%Y-%m-%d-%Hh%M");
+var now = new Date();
+var offset = now.getTimezoneOffset()/60;
+
+var parseCurrentTime = d3.timeParse("%Y-%m-%d-%Hh%M");
+
+function parseTime(t) {
+    var r = parseCurrentTime(t)
+    // Convert to local time. TODO should be optional
+    r.setHours(r.getHours() - offset);
+    return r;
+}
 
 var x = d3.scaleTime().range([0, width]),
     y = d3.scaleLinear().range([height, 20]),
@@ -131,7 +141,7 @@ d3.json("/data/{{.nodes}}", function(error, users) {
    d.values.push(value)
   });
  });
- data.push({date: parseTime(time)}); // add file time
+ data.push({date: parseCurrentTime(time)}); // add file time
 
 
  x.domain(d3.extent(data, function(d) { return d.date; }));

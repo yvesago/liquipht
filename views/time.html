@@ -63,6 +63,7 @@ circle {
 <script>
 var search = "{{.search}}";
 var time = "{{.time}}";
+var utc = {{.utc}}; // Convert utc source to local time
 
 var file = time + "-" + search;
 
@@ -80,8 +81,9 @@ var parseCurrentTime = d3.timeParse("%Y-%m-%d-%Hh%M");
 
 function parseTime(t) {
     var r = parseCurrentTime(t)
-    // Convert to local time. TODO should be optional
-    r.setHours(r.getHours() - offset);
+    if (utc === true) { // Convert to local time
+      r.setHours(r.getHours() - offset);
+    };
     return r;
 }
 

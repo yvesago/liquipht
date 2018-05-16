@@ -15,12 +15,12 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-type Question struct {
+type Group struct {
 	Title string
 	Dates []string
 }
 
-func readFiles() []Question {
+func readFiles() []Group {
 	r, _ := regexp.Compile("data/links-(.*)-(.*?).json")
 	files, ef := filepath.Glob("data/links-*.json")
 	if ef != nil {
@@ -28,11 +28,11 @@ func readFiles() []Question {
 	}
 
 	// reverse order
-    for i, j := 0, len(files)-1; i < j; i, j = i+1, j-1 {
-        files[i], files[j] = files[j], files[i]
-    }
+	for i, j := 0, len(files)-1; i < j; i, j = i+1, j-1 {
+		files[i], files[j] = files[j], files[i]
+	}
 
-	lq := make(map[string]Question)
+	lq := make(map[string]Group)
 	for _, file := range files {
 		match := r.FindStringSubmatch(file)
 		//fmt.Println(match[1])
@@ -42,17 +42,17 @@ func readFiles() []Question {
 
 		qo := lq[q]
 		if qo.Title == "" {
-			qo = Question{Title: q, Dates: []string{}}
+			qo = Group{Title: q, Dates: []string{}}
 		}
 		qo.Dates = append(qo.Dates, d)
 		lq[q] = qo
 	}
 
-	var questions []Question
+	var groups []Group
 	for _, q := range lq {
-		questions = append(questions, q)
+		groups = append(groups, q)
 	}
-	return questions
+	return groups
 }
 
 type Config struct {
@@ -61,6 +61,7 @@ type Config struct {
 	NodesFile     string
 	Title         string
 	Legend        template.HTML
+	ConvertUTC    bool
 	RadialMinView int
 }
 
@@ -75,6 +76,7 @@ func main() {
 		DataDir:       "./data",
 		NodesFile:     "nodes.json",
 		Title:         "Some data",
+		ConvertUTC:    true,
 		RadialMinView: 5}
 	err := ini.MapTo(&config, *confPtr)
 	if err != nil {
@@ -85,6 +87,7 @@ func main() {
 	title := config.Title
 	legend := config.Legend
 	nodes := config.NodesFile
+	utc := config.ConvertUTC
 
 	// Create router
 	r := gin.Default()
@@ -94,12 +97,12 @@ func main() {
 	r.HTMLRender = gintemplate.Default()
 
 	r.GET("/", func(c *gin.Context) {
-		questions := readFiles()
-		//fmt.Printf("==========\n%+v\n==========\n", questions)
+		groups := readFiles()
+		//fmt.Printf("==========\n%+v\n==========\n", groups)
 		c.HTML(200, "index.html", gin.H{
-			"title":     title,
-			"Questions": questions,
-			/*"Questions": []Question{
+			"title":  title,
+			"Groups": groups,
+			/*"Groups": []Group{
 				{Title: "test", Dates: []string{"21h02", "23h03"}},
 			},*/
 		})
@@ -109,6 +112,7 @@ func main() {
 			"title":  title,
 			"nodes":  nodes,
 			"legend": legend,
+			"utc":    utc,
 			"search": c.Param("search"),
 			"time":   c.Param("time"),
 		})
@@ -118,6 +122,7 @@ func main() {
 			"title":  title,
 			"nodes":  nodes,
 			"legend": legend,
+			"utc":    utc,
 			"search": c.Param("search"),
 			"time":   c.Param("time"),
 		})
@@ -127,6 +132,7 @@ func main() {
 			"title":   title,
 			"nodes":   nodes,
 			"legend":  legend,
+			"utc":     utc,
 			"minview": config.RadialMinView,
 			"search":  c.Param("search"),
 			"time":    c.Param("time"),

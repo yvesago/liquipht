@@ -10,7 +10,7 @@ body {
 <body>
 <h1>{{.title}}</h1>
 <ul>
- {{range $q := .Questions}}
+ {{range $q := .Groups}}
  <li>{{$q.Title}}</li>
   <ul>
   {{range $d := .Dates}}

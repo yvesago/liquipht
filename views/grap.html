@@ -132,7 +132,7 @@ d3.json("/data/{{.nodes}}", function(error, users) {
       .attr("y", yt)
       .attr("text-anchor", "left")
       .style("font-size", "20px")
-      .text(links.length + " Sources {{.title}} " + search);
+      .text(links.length + " {{.title}} " + search);
  svg.append("text")
       .attr("class", "title")
       .attr("x", xt)

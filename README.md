@@ -9,7 +9,7 @@ LIght anf QUIck graPH and Timeline viewer
 |     |     |
 | --- | --- |
 | ![Radial](img/radial.gif) | ![Time](img/time.gif) |
-| ![Shell](img/shell.png) | `` $ ./twminer -conf conf/twitterAPI.ini -q "#Efail OR #PGP" ``  |
+| ![Shell](img/shell.png) | ``$ ./twminer -conf ./twitterAPI.ini -q "#Efail OR #PGP"``  |
 | ![Radial](img/Radial.png) | ![Graph](img/Graph.png) |
 
 

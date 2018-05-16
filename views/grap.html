@@ -84,7 +84,16 @@ var file = time + "-" + search;
 
 var img = "{{.title}}-" + file + "-graph.png";
 
-var parseTime = d3.timeParse("%Y-%m-%d-%Hh%M");
+var now = new Date();
+var offset = now.getTimezoneOffset()/60;
+var parseCurrentTime = d3.timeParse("%Y-%m-%d-%Hh%M");
+
+function parseTime(t) {
+    var r = parseCurrentTime(t)
+    // Convert to local time. TODO should be optional
+    r.setHours(r.getHours() - offset);
+    return r;
+};
 
 var svg = d3.select("svg"),
     width = +svg.attr("width"),
@@ -110,17 +119,29 @@ var simulation = d3.forceSimulation()
 var timeScale;
 var numberOfHours = 0;
 
+var xt = search.length;
+var yt = 20;
+
 // get the data
 d3.json("/data/{{.nodes}}", function(error, users) {
  d3.json("/data/links-" + file + ".json", function(error, links) {
 
  svg.append("text")
       .attr("class", "title")
-      .attr("x",  search.length)
-      .attr("y", 20 )
-      .attr("text-anchor", "left")  
-      .style("font-size", "20px") 
-      .text(links.length + " {{.title}} " + search + " à " + time);
+      .attr("x", xt)
+      .attr("y", yt)
+      .attr("text-anchor", "left")
+      .style("font-size", "20px")
+      .text(links.length + " Sources {{.title}} " + search);
+ svg.append("text")
+      .attr("class", "title")
+      .attr("x", xt)
+      .attr("y", 20 + yt)
+      .attr("text-anchor", "left")
+      .style("font-size", "16px")
+      .style("font-weight", "300")
+      .text(time);
+
 
  const R = 35;
  svg.append('svg:defs').selectAll('marker')
@@ -165,7 +186,7 @@ d3.json("/data/{{.nodes}}", function(error, users) {
  var end = parseTime(links[0].created_at);
  var start = parseTime(links[links.length - 1].created_at);
  numberOfHours = d3.timeHour.count(start, end);
- if ( end != null && numberOfHours < 5 ) {
+ if ( end != null && numberOfHours < 4 ) {
     numberOfHours = d3.timeMinute.count(start, end);
  };
  timeScale = d3.scaleTime()
@@ -336,7 +357,7 @@ function timescaled() {
   d3.select('span.cdate').text(d3.timeFormat("%a %d %m %Hh%M")(date));
   svg.selectAll("line")
 	  .style("opacity",function(d){
-		if (parseTime(d.created_at) < date ) {
+		if (parseTime(d.created_at) <= date ) {
 			return 1;
 		} else {
 		    return 0;

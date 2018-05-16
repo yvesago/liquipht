@@ -114,7 +114,16 @@ var file = time + "-" + search;
 
 var img = "{{.title}}-" + file + "-radial.png";
 
-var parseTime = d3.timeParse("%Y-%m-%d-%Hh%M");
+var now = new Date();
+var offset = now.getTimezoneOffset()/60;
+var parseCurrentTime = d3.timeParse("%Y-%m-%d-%Hh%M");
+
+function parseTime(t) {
+    var r = parseCurrentTime(t)
+    // Convert to local time. TODO should be optional
+    r.setHours(r.getHours() - offset);
+    return r;
+};
 
 var diameter = 960,
     radius = diameter / 2,
@@ -149,16 +158,33 @@ var div = d3.select("body").append("div")
 var timeScale;
 var numberOfHours = 0;
 
+var xt = file.length - (diameter / 2);
+var yt = 20 - (diameter / 2);
+
 d3.json("/data/{{.nodes}}", function(error, users) {
  d3.json("/data/links-" + file + ".json", function(error, classes) {
 
  svg.append("text")
       .attr("class", "title")
-      .attr("x",   file.length - (diameter / 2))             
-      .attr("y", 20 - (diameter / 2))
-      .attr("text-anchor", "left")  
-      .style("font-size", "20px") 
-      .text(classes.length + " {{.title}} " + search + " à " + time);
+      .attr("x", xt)
+      .attr("y", yt)
+      .attr("text-anchor", "left")
+      .style("font-size", "20px")
+      .text(classes.length + " {{.title}} " + search);
+ svg.append("text")
+      .attr("class", "title")
+      .attr("x", xt)
+      .attr("y", 20 + yt)
+      .attr("text-anchor", "left")
+      .style("font-size", "16px")
+      .style("font-weight", "300")
+      .text(time);
+
+
+ var c = packageHierarchy(classes, users);
+
+ var nodes = d3.hierarchy(c)
+      .sum(function(d) { d.used= 0; return d.size; });
 
 
  var c = packageHierarchy(classes, users);
@@ -234,7 +260,7 @@ d3.json("/data/{{.nodes}}", function(error, users) {
  var end = parseTime(classes[0].created_at);
  var start = parseTime(classes[classes.length - 1].created_at);
  numberOfHours = d3.timeHour.count(start, end);
- if ( end != null && numberOfHours < 5 ) {
+ if ( end != null && numberOfHours < 4 ) {
     numberOfHours = d3.timeMinute.count(start, end);
  };
  timeScale = d3.scaleTime()
@@ -357,7 +383,7 @@ function timescaled() {
   d3.select('span.cdate').text(d3.timeFormat("%a %d %m %Hh%M")(date));
   svg.selectAll(".link")
       .style("opacity",function(d){
-        if (parseTime(d.created_at) < date ) {
+        if (parseTime(d.created_at) <= date ) {
             return 1;
         } else {
             return 0;

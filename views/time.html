@@ -76,7 +76,6 @@ var svg = d3.select("svg"),
 
 var now = new Date();
 var offset = now.getTimezoneOffset()/60;
-
 var parseCurrentTime = d3.timeParse("%Y-%m-%d-%Hh%M");
 
 function parseTime(t) {
@@ -94,16 +93,27 @@ var div = d3.select("body").append("div")
     .attr("class", "tooltip")               
     .style("opacity", 0);
 
+var xt = search.length;
+var yt = 20;
+
 d3.json("/data/{{.nodes}}", function(error, users) {
  d3.json("/data/links-" + file + ".json", function(error, links) {
 
  svg.append("text")
       .attr("class", "title")
-      .attr("x", search.length)             
-      .attr("y", 20)
-      .attr("text-anchor", "left")  
-      .style("font-size", "20px") 
-      .text(links.length + " Sources {{.title}} " + search + " à " + time);
+      .attr("x", xt)
+      .attr("y", yt)
+      .attr("text-anchor", "left")
+      .style("font-size", "20px")
+      .text(links.length + " Sources {{.title}} " + search);
+ svg.append("text")
+      .attr("class", "title")
+      .attr("x", xt)
+      .attr("y", 20 + yt)
+      .attr("text-anchor", "left")
+      .style("font-size", "16px")
+      .style("font-weight", "300")
+      .text(time);
 
  var map = {}
  var mapsource = {};

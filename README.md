@@ -1,17 +1,22 @@
 # liquipht
 LIght anf QUIck graPH and Timeline viewer 
 
-# Usage
+# Description
 
-``liquipht`` is a local web server which allow to watch links data in your browser.
+``liquipht`` is a golang local web server which allow to watch links data in your browser with d3js views.
 
-![Shell](img/shell.png)
 
-![Graph](img/Radial-Graph.png)
+|     |     |
+| --- | --- |
+| ![Radial](img/radial.gif) | ![Time](img/time.gif) |
+| ![Shell](img/shell.png) |  |
+| ![Radial](img/Radial.png) | ![Graph](img/Graph.png) |
+
 
 ![Time](img/Time.png)
 
-## Install
+
+# Quick start
 
 Download your architecture `liquipht` version and `view-vx.y.z.zip` from github release. 
 Extract `view-vx.y.z.zip` in same directory. 
@@ -19,7 +24,7 @@ Extract `view-vx.y.z.zip` in same directory.
 
 ## Viewer
 
-Add a confsample.ini in current directory or use the command line to fix the path.
+Add a ``confsample.ini`` in current directory or use the command line to fix the path.
 The INI file allows to define data directory, title and colors legend.
 
 
@@ -68,7 +73,7 @@ Optional node file could be used to fix any RGB color or node size
     },
 ```
 
-## Twitter mining
+# Twitter mining
 
 To start working with Twitter you need some API and token keys. You can create a new twitter application at [https://apps.twitter.com/](https://apps.twitter.com/).
 
@@ -83,7 +88,14 @@ C:\User\twminer-v0.0.1-win-amd64.exe -conf twitterAPI.INI -q "#someTrendingTopic
 
 ```
 
-## Licence
+
+# Acknowledgements
+
+This work was mostly inspired by Bob Rudis and Paul Campbell book:  «[21 Recipes for Mining Twitter Data with rtweet](https://rud.is/books/21-recipes/)».
+
+
+
+# Licence
 
 MIT License
 
